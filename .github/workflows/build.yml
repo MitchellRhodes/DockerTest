@@ -1,0 +1,40 @@
+name: build
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  IMAGE_NAME: dockertest
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install packages
+        run: npm install
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Upload build results
+        uses: actions/upload-artifact@v1
+        with:
+          name: build
+          path: dist/dockertest/
+
+      - name: Build image
+        run: docker build -t docker.pkg.github.com/$GITHUB_REPOSITORY/$IMAGE_NAME:$GITHUB_SHA .
+
+      - name: Log into registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+
+      - name: Push image
+        run: |
+          echo IMAGE_ID=docker.pkg.github.com/$GITHUB_REPOSITORY/$IMAGE_NAME:$GITHUB_SHA
+          docker push docker.pkg.github.com/$GITHUB_REPOSITORY/$IMAGE_NAME:$GITHUB_SHA
